@@ -1156,6 +1156,60 @@ describe("Проверка автокомлита и подсказок реда
         assert.equal(suggestions.some(suggest => suggest.label === "ТипВсеСсылки"), true);
 
       });
+
+      it("проверка подсказки директив компиляции", function () {
+
+        bsl = helper('&');
+        let suggestions = bsl.getCodeCompletion({ triggerCharacter: '&' });
+        expect(suggestions).to.be.an('array').that.not.is.empty;
+        assert.equal(suggestions.some(suggest => suggest.label === "НаСервере"), true);
+
+        bsl = helper('&');
+        suggestions = bsl.getCodeCompletion({ triggerCharacter: '' });
+        expect(suggestions).to.be.an('array').that.not.is.empty;
+        assert.equal(suggestions.some(suggest => suggest.label === "НаСервере"), true);
+
+        bsl = helper('&На');
+        suggestions = bsl.getCodeCompletion({ triggerCharacter: '' });
+        expect(suggestions).to.be.an('array').that.not.is.empty;
+        assert.equal(suggestions.some(suggest => suggest.label === "НаСервере"), true);
+
+        bsl = helper('На &');
+        suggestions = bsl.getCodeCompletion({ triggerCharacter: '' });
+        expect(suggestions).to.be.an('array').that.is.empty;
+
+      });
+
+      it("проверка подсказки объявленных процедур/функций", function () {
+
+        bsl = helper('Функция МояФункция(Параметры)\n//Код функции\nКонецФункции\n\nРезультат = Моя');
+        let suggestions = bsl.getCodeCompletion({ triggerCharacter: '' });
+        expect(suggestions).to.be.an('array').that.not.is.empty;
+        assert.equal(suggestions.some(suggest => suggest.label === "МояФункция"), true);
+        
+      });
+
+      it("проверка подсказки методов макета", function () {
+
+        bsl = helper('Макет = Справочники.Товары.ПолучитьМакет("Макет");\nМакет.');
+        let suggestions = bsl.getCodeCompletion({triggerCharacter: '.'});
+        expect(suggestions).to.be.an('array').that.not.is.empty;
+        assert.equal(suggestions.some(suggest => suggest.label === "ПолучитьОбласть"), true);
+        assert.equal(suggestions.some(suggest => suggest.label === "ПолучитьТекст"), true);
+        assert.equal(suggestions.some(suggest => suggest.label === "Размер"), true);
+        assert.equal(suggestions.some(suggest => suggest.label === "ПолучитьОбъект"), false);
+
+      });
+
+      it("проверка получения ресурсов регистра сведений по указанным ключевым полям.", function () {
+
+        bsl = helper('Ресурсы = РегистрыСведений.ЦеныНоменклатуры.Получить(Отбор);\Ресурсы.');
+        let suggestions = bsl.getCodeCompletion({triggerCharacter: '.'});
+        expect(suggestions).to.be.an('array').that.not.is.empty;
+        assert.equal(suggestions.some(suggest => suggest.label === "Цена"), true);
+        assert.equal(suggestions.some(suggest => suggest.label === "Номенклатура"), false);
+
+      });
       
     }
 

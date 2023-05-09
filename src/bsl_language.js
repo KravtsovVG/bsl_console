@@ -515,7 +515,7 @@ define([], function () {
         bsl: {
             languageDef: bsl_language,
             completionProvider: {
-                triggerCharacters: ['.', '"', ' '],
+                triggerCharacters: ['.', '"', ' ', '&'],
                 provideCompletionItems: function (model, position, context, token) {
                     resetSuggestWidgetDisplay();
                     let bsl = new bslHelper(model, position);
@@ -597,6 +597,7 @@ define([], function () {
                 ['(', ')'],
                 ['[', ']'],
                 ['если', 'конецесли'],
+                ['иначеесли', 'иначеесли'],
                 ['if', 'endif'],
                 ['пока', 'конеццикла'],
                 ['для', 'конеццикла'],
@@ -607,7 +608,8 @@ define([], function () {
                 ['функция', 'конецфункции'],
                 ['function', 'endfunction'],
                 ['процедура', 'конецпроцедуры'],
-                ['procedure', 'endprocedure']
+                ['procedure', 'endprocedure'],
+                ['#область', '#конецобласти']
             ],
             autoClosingPairs: []
         },

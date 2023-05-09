@@ -37,10 +37,23 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
   editor_options = [];
   snippets = {};
   treeview = null;
-  lineNumbersDedocrations = []
+  lineNumbersDedocrations = [];
+  selectedQueryDelimiters = new Map();
   // #endregion
 
   // #region public API
+  wordWrap = function (enabled) {
+
+    if (editor.navi) {
+      editor.originalEditor.updateOptions({ wordWrap: enabled });
+      editor.modifiedEditor.updateOptions({ wordWrap: enabled });
+    }
+    else {
+      editor.updateOptions({ wordWrap: enabled })
+    }
+  
+  }
+
   reserMark = function() {
 
     clearInterval(err_tid);
@@ -1516,6 +1529,50 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
   }
 
+  getDifferences = function () {
+
+    let diff = [];
+
+    if (editor.navi) {
+
+      diff = editor.getLineChanges();
+      let original_model = editor.originalEditor.getModel();
+      let modified_model = editor.modifiedEditor.getModel();
+
+      diff.forEach(function (value) {
+                
+        value["originalText"] = getTextInLines(original_model, value.originalStartLineNumber, value.originalEndLineNumber);
+        value["modifiedText"] = getTextInLines(modified_model, value.modifiedStartLineNumber, value.modifiedEndLineNumber);        
+
+        if (Array.isArray(value.charChanges)) {
+          
+          value.charChanges.forEach(function (char) {
+            char["originalText"] = getTextInRange(
+              original_model,
+              char.originalStartLineNumber,
+              char.originalStartColumn,
+              char.originalEndLineNumber,
+              char.originalEndColumn
+            );
+            char["modifiedText"] = getTextInRange(
+              modified_model,
+              char.modifiedStartLineNumber,
+              char.modifiedStartColumn,
+              char.modifiedEndLineNumber,
+              char.modifiedEndColumn
+            );
+          });
+
+        }
+
+      });
+
+    }
+
+    return diff;
+
+  } 
+
   generateEventWithSuggestData = function(eventName, trigger, row, suggestRows = []) {
 
     let bsl = new bslHelper(editor.getModel(), editor.getPosition());
@@ -1804,6 +1861,7 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
       updateStatusBar();
       onChangeSnippetSelection(e);
+      updateSelectedQueryDelimiters(e);
 
     });
 
@@ -1817,6 +1875,92 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
   // #endregion
     
   // #region non-public functions
+  function mapsAreEqual(map1, map2) {
+    
+    let testVal;
+    
+    if (map1.size !== map2.size)
+      return false;
+    
+    for (let [key, val] of map1) {
+      testVal = map2.get(key);
+      if (testVal !== val || (testVal === undefined && !map2.has(key))) {
+        return false;
+      }
+    }
+
+    return true;
+
+  }
+
+  function updateSelectedQueryDelimiters(e) {
+
+    if (queryMode && editor.renderQueryDelimiters) {
+      
+      let prevSelectedDelimiters = new Map(selectedQueryDelimiters);
+      selectedQueryDelimiters = new Map();
+      const matches = editor.getModel().findMatches('^\\s*;\\s*$', e.selection, true, false, null, true);
+      
+      for (let idx = 0; idx < matches.length; idx++)
+        selectedQueryDelimiters.set(matches[idx].range.toString(), true);          
+
+      if (!mapsAreEqual(prevSelectedDelimiters, selectedQueryDelimiters)) {
+        editor.updateDecorations([]);
+      }
+
+    }
+
+  }
+
+  generateEscapeEvent = function() {
+
+    let position = editor.getPosition();
+    let bsl = new bslHelper(editor.getModel(), position);
+
+    eventParams = {
+      current_word: bsl.word,
+      last_word: bsl.lastRawExpression,
+      last_expression: bsl.lastExpression,
+      altKey: altPressed,
+      ctrlKey: ctrlPressed,
+      shiftKey: shiftPressed,
+      position: position
+    }
+
+    sendEvent('EVENT_ON_KEY_ESC', eventParams);
+
+  }
+
+  function getTextInLines(model, startLineNumber, endLineNumber) {
+
+    let text = '';
+
+    if (endLineNumber >= startLineNumber) {
+      let range = {
+        startLineNumber: startLineNumber,
+        startColumn: 1,
+        endLineNumber: endLineNumber,
+        endColumn: model.getLineMaxColumn(endLineNumber),
+      }
+      text = model.getValueInRange(range);
+    }
+
+    return text;
+
+  }
+
+  function getTextInRange(model, startLineNumber, startColumn, endLineNumber, endColumn) {
+
+    let range = {
+      startLineNumber: startLineNumber,
+      startColumn: startColumn,
+      endLineNumber: endLineNumber,
+      endColumn: endColumn,
+    }
+    return model.getValueInRange(range);
+
+  }
+
   function getLineNumberMargin(originalLineNumber) {
     
     let margin = '';
@@ -2227,20 +2371,24 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
     if (queryMode && editor.renderQueryDelimiters) {
 
       const matches = editor.getModel().findMatches('^\\s*;\\s*$', false, true, false, null, true);
-      
-      let color = '#f2f2f2';
-      let class_name  = 'query-delimiter';
-      
       const current_theme = getCurrentThemeName();
       const is_dark_theme = (0 <= current_theme.indexOf('dark'));
 
-      if (is_dark_theme) {
-        class_name = 'query-delimiter-dark';
-        color = '#2d2d2d'
-      }
-
       for (let idx = 0; idx < matches.length; idx++) {
+      
+        let color = '#f2f2f2';
+        let class_name  = 'query-delimiter';
+
+        if (is_dark_theme) {
+          class_name = 'query-delimiter-dark';
+          color = '#2d2d2d'
+        }
+        
         let match = matches[idx];
+
+        if (selectedQueryDelimiters.get(match.range.toString()))
+          class_name += '-selected';
+
         decorations.push({
           range: new monaco.Range(match.range.startLineNumber, 1, match.range.startLineNumber),
           options: {
@@ -2360,11 +2508,20 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
       getActiveDiffEditor().diffDecor.position = e.position.lineNumber;
       editor.diffEditorUpdateDecorations();
       editor.diffCount = editor.getLineChanges().length;
+      const line_number = e.position.lineNumber;
 
-      if (editor.getModifiedEditor().getPosition().equals(e.position))
-        editor.getOriginalEditor().setPosition(e.position);
-      else
-        editor.getModifiedEditor().setPosition(e.position);
+      if (editor.getModifiedEditor().getPosition().equals(e.position)) {
+        editor.getOriginalEditor().setPosition({
+          lineNumber: editor.getDiffLineInformationForModified(line_number).equivalentLineNumber,
+          column: 1
+        });
+      }
+      else {
+        editor.getModifiedEditor().setPosition({
+          lineNumber: editor.getDiffLineInformationForOriginal(line_number).equivalentLineNumber,
+          column: 1
+        });
+      }
 
       updateStatusBar();
 
@@ -2407,6 +2564,7 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
     }
     else if (e.keyCode == 9) {
       // Esc
+      generateEscapeEvent();
       closeSearchWidget();      
     }
     else if (e.keyCode == 61) {
@@ -2482,6 +2640,7 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
     }
     else if (e.keyCode == 9) {
       // Esc
+      generateEscapeEvent();
       setFindWidgetDisplay('none');
       hideSuggestionsList();
     }
