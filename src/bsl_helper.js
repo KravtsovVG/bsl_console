@@ -64,14 +64,15 @@ class bslHelper {
 
 	/**
 	 * Returns the token in the current position
+	 * @param {object} wordData data of word from current position (on hover)
 	 * 
 	 * @return {string} name of token
 	 */
-	getLastToken() {
+	getLastToken(wordData = null) {
 
 		let token = '';
-
-		let value = this.model.getValueInRange(new monaco.Range(1, 1, this.lineNumber, this.column));
+		let column = wordData == null ? this.column : wordData.endColumn + 1;
+		let value = this.model.getValueInRange(new monaco.Range(1, 1, this.lineNumber, column));
 		let lang_id = this.getLangId();
 		let tokens = monaco.editor.tokenize(value, lang_id);
 
@@ -189,7 +190,12 @@ class bslHelper {
 	 */
 	isItStringLiteral() {
 
-		return !!~this.token.search(/(string|query)/);
+		let is_query = (isQueryMode() || isDCSMode());
+
+		if (is_query)
+			return !!~this.token.search("string");
+		else
+			return !!~this.token.search(/(string|query)/);
 
 	}
 
@@ -7843,12 +7849,15 @@ class bslHelper {
 	onProvideHover() {
 
 		let fire_event = getOption('generateBeforeHoverEvent');
+		
+		let word = this.model.getWordAtPosition(this.position);
+		if (word)
+			this.token = this.getLastToken(word);
 
 		if (fire_event) {
-			let token = this.getLastToken();
 			let params = {
-				word: this.model.getWordAtPosition(this.position),
-				token: token,
+				word: word,
+				token: this.token,
 				line: this.lineNumber,
 				column: this.column,
 				altKey: altPressed,
