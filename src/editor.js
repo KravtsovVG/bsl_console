@@ -3851,6 +3851,8 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
   
   function onSuggestListMouseOver(activationEventEnabled) {
 
+    return; // Disabled until fix https://github.com/salexdv/bsl_console/issues/190
+    
     let widget = getSuggestWidget().widget;
 
     if (activationEventEnabled) {
