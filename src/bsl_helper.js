@@ -6587,7 +6587,9 @@ class bslHelper {
 		else if (window.isDCSMode())
 			return true;
 		else
-			return !this.isItStringLiteral();
+			// https://github.com/salexdv/bsl_console/issues/343
+			// return !this.isItStringLiteral();
+			return true; 
 
 
 	}
