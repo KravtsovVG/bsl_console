@@ -8287,6 +8287,9 @@ class bslHelper {
 	 */
 	provideDefinition() {
 
+		if (this.word)
+			this.generateDefinitionEvent();
+		
 		let location = null;
 		let definition = this.getDefinition();
 
@@ -8295,9 +8298,7 @@ class bslHelper {
 			location = [{
 				uri: this.model.uri,
 				range: definition.range
-			}];
-
-			this.generateDefinitionEvent();
+			}];			
 			
 			if (location && !ctrlPressed)
 				window.editor.definitionBreadcrumbs.push(this.position);
