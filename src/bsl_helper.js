@@ -8126,7 +8126,6 @@ class bslHelper {
 
 		if (this.word) {
 
-			this.generateDefinitionEvent();
 			let exp_arr = this.lastExpression.split('.');
 
 			if (exp_arr.length == 1) {
@@ -8178,6 +8177,9 @@ class bslHelper {
 	 * @returns {array} Location[]
 	 */
 	provideDefinition() {
+
+		if (this.word)
+			this.generateDefinitionEvent();
 
 		let location = null;
 		let definition = this.getDefinition();
