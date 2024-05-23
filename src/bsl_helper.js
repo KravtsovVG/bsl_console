@@ -8126,6 +8126,7 @@ class bslHelper {
 
 		if (this.word) {
 
+			this.generateDefinitionEvent();
 			let exp_arr = this.lastExpression.split('.');
 
 			if (exp_arr.length == 1) {
@@ -8186,9 +8187,7 @@ class bslHelper {
 			location = [{
 				uri: this.model.uri,
 				range: definition.range
-			}];
-
-			this.generateDefinitionEvent();
+			}];			
 
 			if (location && !ctrlPressed)
 				editor.definitionBreadcrumbs.push(this.position);
