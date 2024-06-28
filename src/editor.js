@@ -2026,7 +2026,11 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
       setTimeout(() => { resizeStatusBar(); } , 50);
 
-    })
+    });
+
+    editor.onDidPaste(e => {
+      onDidPaste(e);
+    });
 
   }
   // #endregion
@@ -2187,6 +2191,53 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
         }
 
+      }
+
+    }
+
+  }
+
+  function removeQueryStringDelimiter(string) {
+
+    let text = string;
+
+    while (/^\s*\|/.test(text))
+      text = text.substr(1);
+
+    return text;
+
+  }
+
+  function onDidPaste(e) {
+
+    if (isQueryMode() && !readOnlyMode) {
+      
+      let text = editor.getModel().getValueInRange(e.range).trim();
+      let text_changed = false;
+
+      if (text.startsWith('"')) {
+        text = text.substr(1);
+        text_changed = true;
+      }
+
+      if (text.endsWith('"')) {
+        text = text.substr(0, text.length - 1);
+        text_changed = true;
+      }
+
+      let strings = text.split('\n');
+      let query = [];
+
+      strings.forEach(string => {
+        const formated_string = removeQueryStringDelimiter(string);
+        if (formated_string != string)
+          text_changed = true
+        query.push(formated_string);
+      });
+
+      if (text_changed && text) {
+        setText(query.join('\n'), e.range, true);
+        editor._modelData.model._commandManager.currentOpenStackElement.editOperations.pop();
       }
 
     }
