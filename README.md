@@ -258,8 +258,8 @@ setLanguageMode('bsl');
 
 ## Продукты, использующие консоль
 
-* [OneDebugger](https://infostart.ru/public/2095430/)
 * [Infostart Toolkit](https://infostart.ru/journal/news/news/infostart-toolkit-1-3-teper-s-novym-redaktorom-koda-na-baze-monaco-editor_1303095/)
+* [OneDebugger](https://infostart.ru/public/2095430/)
 * [Конвертация данных 3 расширение](https://infostart.ru/public/1289837/)
 * [Контекстная подсказка в 1С КД3](https://github.com/GenVP/TipsInCD3)
 * [Подсистема "Инструменты разработчика"](https://infostart.ru/public/15126/)
