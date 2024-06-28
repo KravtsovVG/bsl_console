@@ -9,6 +9,8 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
   readOnlyMode = false;
   queryMode = false;
   DCSMode = false;
+  debugMode = false;
+  usingDebugger = false;
   version1C = '';
   userName = '';
   contextActions = [];
@@ -86,10 +88,14 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
     reserMark();    
     bslHelper.setText(txt, range, usePadding);
     
-    if (getText())
+    if (getText()) {
       checkBookmarksCount();
-    else
+      checkBreakpointsCount();
+    }
+    else {
       removeAllBookmarks();
+      removeAllBreakpoints();
+    }
     
     editor.checkBookmarks = true;
 
@@ -116,11 +122,15 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
     else
       setText(txt);
 
-    if (getText())
+    if (getText()) {
       checkBookmarksCount();
-    else
+      checkBreakpointsCount();
+    }
+    else {
       removeAllBookmarks();
-
+      revomeAllBreakpoints();
+    }
+  
     if (mod_event)    
       setOption('generateModificationEvent', true);
 
@@ -364,6 +374,32 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
     setTheme(currentTheme);
 
     initContextMenuActions();
+
+  }
+
+  setDebugMode = function(mode) {
+
+    debugMode = mode;
+    initContextMenuActions();
+
+  }
+
+  isDebugMode = function() {
+
+    return debugMode;
+
+  }
+
+  setUsingDebugger = function(mode) {
+
+    usingDebugger = mode;
+    initContextMenuActions();
+
+  }
+
+  isUsingDebugger = function() {
+
+    return usingDebugger;
 
   }
 
@@ -1086,6 +1122,60 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
     let sorted_bookmarks = getSortedBookmarks();
     return Array.from(sorted_bookmarks.keys());
+
+  }
+
+  removeAllBreakpoints = function() {
+
+    editor.breakpoints.clear();
+    editor.updateDecorations([]);
+
+  }  
+
+  getBreakpoints = function () {
+
+    let sorted_breakpoints = getSortedBreakpoints();
+    return JSON.stringify(Array.from(sorted_breakpoints.keys()));
+
+  }
+
+  setCurrentDebugLine = function (line) {
+    
+    editor.currentDebugLine.clear();
+
+    debugLine = {
+        range: new monaco.Range(line, 1, line),
+        options: {
+            isWholeLine: true,
+            className: 'debug-line',
+          }
+    }
+    
+    pointer = {
+      range: new monaco.Range(line, 1, line),
+      options: {
+          isWholeLine: true,
+          linesDecorationsClassName: 'debug-line-pointer',
+          overviewRuler: {
+              position: 1
+          }
+      }
+    }
+
+    DebugLineSet = {
+      line: debugLine,
+      pointer: pointer
+    }
+
+    editor.currentDebugLine.set(line, DebugLineSet);
+    editor.updateDecorations([]);
+
+  }
+
+  deleteCurrentDebugLine = function () {
+
+    editor.currentDebugLine.clear();
+    editor.updateDecorations([]);
 
   }
 
@@ -1888,6 +1978,8 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
     editor.sendEvent = sendEvent;
     editor.decorations = [];
     editor.bookmarks = new Map();
+    editor.breakpoints = new Map();
+    editor.currentDebugLine = new Map();
     editor.checkBookmarks = true;
     editor.diff_decorations = [];
 
@@ -1897,6 +1989,15 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
       editor.bookmarks.forEach(function (value) {
         permanent_decor.push(value);
+      });
+
+      editor.breakpoints.forEach(function (value) {
+        permanent_decor.push(value);
+      });
+
+      editor.currentDebugLine.forEach(function (value) {
+        permanent_decor.push(value.line);
+        permanent_decor.push(value.pointer);
       });
 
       permanent_decor = permanent_decor.concat(editor.diff_decorations);
@@ -1939,7 +2040,10 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
         sendEvent('EVENT_CONTENT_CHANGED', '');
 
       checkBookmarksAfterRemoveLine(e);
+      checkBreakpointsAfterRemoveLine(e);
+
       updateBookmarks(undefined);
+      updateBreakpoints(undefined);
 
       setOption('lastContentChanges', e);
           
@@ -1985,6 +2089,7 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
       if (e.event.detail == 2 && element.classList.contains('line-numbers')) {
         let line = e.target.position.lineNumber;
         updateBookmarks(line);
+        updateBreakpoints(line);
       }
 
       if (element.classList.contains('diff-navi')) {
@@ -2010,6 +2115,7 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
       if (text === '\n') {
         checkNewStringLine();
         checkBookmarksAfterNewLine();
+        checkBreakpointsAfterNewLine();
       }
 
     });
@@ -3142,6 +3248,35 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
   }
 
+  function checkBreakpointsAfterNewLine() {
+
+    let line = getCurrentLine();
+    let content = getLineContent(line);
+
+    if (content)
+      line--;
+
+    let line_check = getLineCount();
+
+    while (line <= line_check) {
+
+      let breakpoint = editor.breakpoints.get(line_check);
+
+      if (breakpoint) {
+        breakpoint.range.startLineNumber = line_check + 1;
+        breakpoint.range.endLineNumber = line_check + 1;
+        editor.breakpoints.set(line_check + 1, breakpoint);
+        editor.breakpoints.delete(line_check);
+      }
+
+      line_check--;
+
+    }
+
+    updateBreakpoints(undefined);
+
+  }
+
   function checkBookmarksAfterRemoveLine(contentChangeEvent) {
 
     if (contentChangeEvent.changes.length && editor.checkBookmarks) {
@@ -3194,6 +3329,58 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
   }
 
+  function checkBreakpointsAfterRemoveLine(contentChangeEvent) {
+
+    if (contentChangeEvent.changes.length && editor.checkBookmarks) {
+
+      let changes = contentChangeEvent.changes[0];
+      let range = changes.range;
+
+      if (!changes.text && range.startLineNumber != range.endLineNumber) {
+
+        let line = range.startLineNumber;
+        let prev_breakpoint = editor.breakpoints.get(range.endLineNumber);
+
+        if (prev_breakpoint) {
+
+          for (l = line; l <= range.endLineNumber; l++) {
+            editor.breakpoints.delete(l);
+          }
+
+          prev_breakpoint.range.startLineNumber = line;
+          prev_breakpoint.range.endLineNumber = line;
+          editor.breakpoints.set(line, prev_breakpoint);
+
+        }
+
+        for (l = line + 1; l <= range.endLineNumber; l++) {
+          editor.breakpoints.delete(l);
+        }
+
+        let line_check = range.endLineNumber;
+        let diff = range.endLineNumber - line;
+
+        while (line_check < getLineCount()) {
+
+          let breakpoint = editor.breakpoints.get(line_check);
+
+          if (breakpoint) {
+            breakpoint.range.startLineNumber = line_check - diff;
+            breakpoint.range.endLineNumber = line_check - diff;
+            editor.breakpoints.set(line_check - diff, breakpoint);
+            editor.breakpoints.delete(line_check);
+          }
+
+          line_check++;
+
+        }
+
+      }
+
+    }
+
+  }
+
   function checkBookmarksCount() {
 
     let count = getLineCount();
@@ -3206,6 +3393,22 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
     keys.forEach(function (key) {
       editor.bookmarks.delete(key);
+    });
+
+  }
+
+  function checkBreakpointsCount() {
+
+    let count = getLineCount();
+    let keys = [];
+
+    editor.breakpoints.forEach(function (value, key) {
+      if (count < key)
+        keys.push(key);
+    });
+
+    keys.forEach(function (key) {
+      editor.breakpoints.delete(key);
     });
 
   }
