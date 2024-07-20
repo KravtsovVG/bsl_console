@@ -632,7 +632,7 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
 
   }
 
-  compare = function (text, sideBySide, highlight, markLines = true) {
+  compare = function (text, sideBySide, highlight, markLines = true, respectTrimWhitespace = false) {
     
     let language_id = getCurrentLanguageId();
     let currentTheme = getCurrentThemeName();
@@ -664,6 +664,7 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
         automaticLayout: true,
         scrollBeyondLastLine: false,
         renderSideBySide: sideBySide,
+        ignoreTrimWhitespace: !respectTrimWhitespace,
         find: {
           addExtraSpaceOnTop: false
         }
