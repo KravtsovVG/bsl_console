@@ -700,6 +700,7 @@ define(['bslGlobals', 'bslMetadata', 'snippets', 'bsl_language', 'vs/editor/edit
         automaticLayout: true,
         scrollBeyondLastLine: false,
         renderSideBySide: sideBySide,
+        ignoreTrimWhitespace: false,
         find: {
           addExtraSpaceOnTop: false
         }
